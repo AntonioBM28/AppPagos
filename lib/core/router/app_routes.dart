@@ -1,17 +1,24 @@
 import '../security/session_manager.dart';
 
-/// Rutas de la app y regla de redireccion segun el estado de la sesion.
+/// Rutas de la app y regla de redireccion segun el estado de la sesion y el rol.
 abstract final class AppRoutes {
   static const cargando = '/cargando';
   static const login = '/login';
   static const verificarCodigo = '/verificar-codigo';
+  static const registro = '/registro';
   static const inicio = '/inicio';
+  static const clientes = '/clientes';
   static const catalogo = '/catalogo';
   static const historial = '/historial';
   static const perfil = '/perfil';
+  static const misDatos = '/perfil/datos';
 
-  /// Accesibles sin sesion (el flujo de inicio de sesion).
-  static const publicas = {login, verificarCodigo};
+  static String clienteDetalle(int id) => '$clientes/$id';
+  static String clienteEditar(int id) => '$clientes/$id/editar';
+  static const clienteNuevo = '$clientes/nuevo';
+
+  /// Accesibles sin sesion: inicio de sesion y autoregistro.
+  static const publicas = {login, verificarCodigo, registro};
 
   /// Parametro que recuerda a donde iba el usuario antes de pasar por /cargando.
   static const paramDesde = 'desde';
@@ -19,13 +26,20 @@ abstract final class AppRoutes {
   static bool esProtegida(String path) =>
       path != cargando && !publicas.contains(path);
 
+  static bool soloEjecutivo(String path) => path == clientes || path.startsWith('$clientes/');
+
   /// Decide la redireccion. Devuelve null si la ruta pedida es valida.
   ///
   /// - verificando: todo pasa por /cargando, asi nunca se pinta una pantalla
   ///   protegida antes de confirmar la sesion (importante al refrescar en web).
-  /// - autenticada: el flujo de login y /cargando llevan al destino original o a /inicio.
+  /// - autenticada: el flujo de login y /cargando llevan al destino original o a /inicio;
+  ///   la administracion de clientes es solo del EJECUTIVO.
   /// - noAutenticada: cualquier ruta protegida lleva a /login.
-  static String? redireccion({required SessionStatus status, required Uri uri}) {
+  static String? redireccion({
+    required SessionStatus status,
+    required Uri uri,
+    bool esEjecutivo = false,
+  }) {
     final ruta = uri.path;
     switch (status) {
       case SessionStatus.verificando:
@@ -36,8 +50,10 @@ abstract final class AppRoutes {
         ).toString();
       case SessionStatus.autenticada:
         if (ruta == cargando || publicas.contains(ruta)) {
-          return destinoSeguro(uri.queryParameters[paramDesde]) ?? inicio;
+          final destino = destinoSeguro(uri.queryParameters[paramDesde]);
+          return destino != null && (esEjecutivo || !soloEjecutivo(Uri.parse(destino).path)) ? destino : inicio;
         }
+        if (soloEjecutivo(ruta) && !esEjecutivo) return inicio;
         return null;
       case SessionStatus.noAutenticada:
         if (ruta == cargando || esProtegida(ruta)) return login;

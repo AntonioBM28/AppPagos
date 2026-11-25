@@ -4,9 +4,7 @@ Cliente de comercio digital que consume la API REST del proyecto (Spring Boot) i
 GestoPago. Un solo código fuente se compila como **app móvil** (Android e iOS) y como
 **aplicación web** (Flutter Web), con las mismas funciones y el mismo diseño.
 
-> Estado: **Parte 1 – base del proyecto**. Están listas la arquitectura, la capa de red, el
-> manejo de errores, la sesión segura, la navegación protegida y el sistema de diseño. Login,
-> doble factor, catálogo, compras e historial se agregan en las siguientes partes.
+> Estado: **Partes 1 y 2**: base del proyecto, inicio de sesión con código por correo (2FA), sesión única y cierre de sesión. Catálogo, compras e historial se agregan en las siguientes partes.
 
 ## Requisitos
 

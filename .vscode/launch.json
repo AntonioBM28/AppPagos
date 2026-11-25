@@ -1,0 +1,30 @@
+{
+  // Configuraciones de ejecucion. Cada una pasa el archivo de ambiente de config/,
+  // asi la app sabe a que API conectarse sin escribir argumentos a mano.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "PagosApp web (dev)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "args": ["--dart-define-from-file=config/dev.json"]
+    },
+    {
+      "name": "PagosApp dispositivo (dev)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": ["--dart-define-from-file=config/dev.json"]
+    },
+    {
+      "name": "PagosApp (prod)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "release",
+      "args": ["--dart-define-from-file=config/prod.json"]
+    }
+  ]
+}

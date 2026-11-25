@@ -1,7 +1,37 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/foundation.dart';
 import 'package:pagosapp/core/config/app_config.dart';
 
 void main() {
+  group('AppConfig.resolverUrl', () {
+    test('sin configuracion en debug usa el backend local', () {
+      expect(
+        AppConfig.resolverUrl(configurada: '', esDebug: true, isWeb: true, plataforma: TargetPlatform.windows),
+        'http://localhost:8080',
+      );
+      expect(
+        AppConfig.resolverUrl(configurada: '', esDebug: true, isWeb: false, plataforma: TargetPlatform.android),
+        'http://10.0.2.2:8080',
+      );
+    });
+
+    test('en release no hay valor por defecto y lo configurado siempre gana', () {
+      expect(
+        AppConfig.resolverUrl(configurada: '', esDebug: false, isWeb: true, plataforma: TargetPlatform.windows),
+        '',
+      );
+      expect(
+        AppConfig.resolverUrl(
+          configurada: 'https://pwa-n2mh.onrender.com',
+          esDebug: true,
+          isWeb: true,
+          plataforma: TargetPlatform.windows,
+        ),
+        'https://pwa-n2mh.onrender.com',
+      );
+    });
+  });
+
   group('AppConfig.validateConfig', () {
     test('en prod rechaza http', () {
       expect(

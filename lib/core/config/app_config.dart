@@ -8,8 +8,32 @@ enum AppEnv { dev, prod }
 /// No contiene secretos ni valores por defecto sensibles: la URL de la API se
 /// define por ambiente en config/dev.json y config/prod.json (fuera de Git).
 abstract final class AppConfig {
-  static const String apiBaseUrl = String.fromEnvironment('API_BASE_URL');
+  static const String _apiBaseUrl = String.fromEnvironment('API_BASE_URL');
   static const String _appEnv = String.fromEnvironment('APP_ENV', defaultValue: 'dev');
+
+  /// URL de la API. Si no se paso --dart-define-from-file (por ejemplo, con el boton
+  /// Run del IDE) y la app corre en modo debug, usa el backend local. En release
+  /// nunca hay valor por defecto: la URL siempre viene de config/*.json.
+  static String get apiBaseUrl => resolverUrl(
+        configurada: _apiBaseUrl,
+        esDebug: kDebugMode,
+        isWeb: kIsWeb,
+        plataforma: defaultTargetPlatform,
+      );
+
+  /// Backend local de desarrollo. En el emulador de Android, "localhost" es el propio
+  /// emulador; 10.0.2.2 es la computadora que lo ejecuta.
+  static String resolverUrl({
+    required String configurada,
+    required bool esDebug,
+    required bool isWeb,
+    required TargetPlatform plataforma,
+  }) {
+    if (configurada.trim().isNotEmpty || !esDebug) return configurada;
+    return !isWeb && plataforma == TargetPlatform.android
+        ? 'http://10.0.2.2:8080'
+        : 'http://localhost:8080';
+  }
 
   static AppEnv get env => parseEnv(_appEnv);
   static bool get isDev => env == AppEnv.dev;

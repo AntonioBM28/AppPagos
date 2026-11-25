@@ -76,7 +76,33 @@ Todas las peticiones pasan por `ApiClient`, construido en `dio_factory.dart`:
 - **XSS en Flutter Web**: la interfaz se dibuja con widgets (no con HTML), todo texto del
   servidor se muestra con `Text` y no se usa `HtmlElementView`, así que no se inyecta HTML.
 
-## 6. Navegación protegida
+## 6. Inicio de sesión con doble factor y sesión única
+
+**Flujo:** correo y contraseña (`LoginCubit`) → código de 6 dígitos enviado al correo
+(`VerificacionCubit`) → sesión abierta. Si la cuenta ya tiene una sesión en otro dispositivo, el
+servidor responde 409 y la app pregunta, con la plataforma y la hora, si se debe cerrar esa
+sesión; solo al confirmar repite el login con `cerrarSesionAnterior`.
+
+**Por qué el segundo factor se valida en el servidor y no en la app:** si la app conociera el
+código o decidiera si es correcto, un atacante con la contraseña podría modificarla o llamar
+directamente a la API para saltarse el paso. Por eso el código solo existe en el correo del usuario
+y como hash BCrypt en la base de datos; la app únicamente lo envía. El servidor controla que venza,
+que sea de un solo uso, el número de intentos y los reenvíos, y la sesión (el JWT) solo se emite
+después de validarlo.
+
+**Por qué la sesión única vive en el servidor:** una variable en el dispositivo no puede impedir que
+otro dispositivo use la cuenta. Cada JWT lleva el id de una sesión de la tabla `sesiones`, y el
+servidor rechaza cualquier token cuya sesión ya se cerró. Cuando el usuario entra desde la web y
+cierra la sesión del móvil, la siguiente petición del móvil recibe 401 con el motivo ("iniciaste
+sesión en otro dispositivo"), y la app lo muestra en el login.
+
+**Controles en la interfaz:** el botón de envío se bloquea mientras hay una petición en curso (los
+Cubits ignoran un segundo envío), la contraseña nunca se guarda (solo vive en memoria mientras el
+usuario decide sobre la sesión activa), el código se escribe con teclado numérico y autocompletado
+de un solo uso, y hay cuentas regresivas para el vencimiento y el reenvío. Un 410 (código usado) o
+un 429 (sin intentos) llevan directo a "Iniciar sesión de nuevo".
+
+## 7. Navegación protegida
 
 - `go_router` con un `redirect` global que depende solo del estado de `SessionManager`
   (`verificando`, `autenticada`, `noAutenticada`); se re-evalúa cada vez que cambia.
@@ -87,7 +113,7 @@ Todas las peticiones pasan por `ApiClient`, construido en `dio_factory.dart`:
 - La expiración se controla en dos niveles: un temporizador local con la vigencia del token y
   el servidor, que responde 401 (por ejemplo, si la sesión se cerró desde otro dispositivo).
 
-## 7. Diseño y accesibilidad
+## 8. Diseño y accesibilidad
 
 - Material 3 desde `material_ui` (en Flutter 3.47+ Material se separó del SDK), temas claro y
   oscuro derivados de un color de marca, y tokens de espaciado, radios y tamaños.

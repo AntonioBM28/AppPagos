@@ -52,9 +52,8 @@ class ErrorInterceptor extends Interceptor {
       404 => mensaje == null
           ? const NotFoundException()
           : NotFoundException(mensaje),
-      409 => mensaje == null
-          ? const ConflictException()
-          : ConflictException(mensaje),
+      409 => _conflicto(response?.data, mensaje),
+      410 => mensaje == null ? const GoneException() : GoneException(mensaje),
       413 => mensaje == null
           ? const PayloadTooLargeException()
           : PayloadTooLargeException(mensaje),
@@ -76,6 +75,19 @@ class ErrorInterceptor extends Interceptor {
           ? const ServerException()
           : ServerException(mensaje),
     };
+  }
+
+  /// Un 409 con "sesionActiva" es el aviso de sesion abierta en otro dispositivo.
+  static AppException _conflicto(Object? body, String? mensaje) {
+    if (body is Map && body['sesionActiva'] is Map) {
+      final sesion = body['sesionActiva'] as Map;
+      return SesionActivaException(
+        message: mensaje ?? 'Ya tienes una sesión activa en otro dispositivo',
+        plataforma: sesion['plataforma'] as String? ?? 'MOVIL',
+        iniciadaEn: DateTime.tryParse(sesion['iniciadaEn'] as String? ?? '')?.toLocal(),
+      );
+    }
+    return mensaje == null ? const ConflictException() : ConflictException(mensaje);
   }
 
   /// Solo toma "mensaje" si la respuesta respeta el sobre de la API.

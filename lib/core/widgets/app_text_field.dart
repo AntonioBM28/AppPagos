@@ -16,6 +16,7 @@ class AppTextField extends StatefulWidget {
     this.formatos,
     this.longitudMaxima,
     this.habilitado = true,
+    this.mostrarContador = false,
     this.onSubmitted,
     this.onChanged,
     super.key,
@@ -33,6 +34,9 @@ class AppTextField extends StatefulWidget {
   final List<TextInputFormatter>? formatos;
   final int? longitudMaxima;
   final bool habilitado;
+
+  /// Muestra "n/max" debajo del campo (requiere [longitudMaxima]).
+  final bool mostrarContador;
   final ValueChanged<String>? onSubmitted;
   final ValueChanged<String>? onChanged;
 
@@ -65,7 +69,7 @@ class _AppTextFieldState extends State<AppTextField> {
         helperText: widget.ayuda,
         helperMaxLines: 2,
         errorMaxLines: 3,
-        counterText: '',
+        counterText: widget.mostrarContador ? null : '',
         prefixIcon: widget.icono == null ? null : Icon(widget.icono),
         suffixIcon: widget.esContrasena
             ? IconButton(

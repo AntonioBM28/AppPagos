@@ -42,7 +42,7 @@ void main() {
     AuthInterceptor crear({required bool isWeb}) => AuthInterceptor(
           sessionStore: _StoreConToken(),
           isWeb: isWeb,
-          esPublica: (ruta) => ruta == '/auth/login',
+          esPublica: (ruta, _) => ruta == '/auth/login',
         );
 
     test('en movil agrega el Bearer en rutas protegidas', () async {
@@ -106,7 +106,7 @@ void main() {
         interceptores: [
           SessionInterceptor(
             sessionManager: sesion,
-            avisaExpiracion: (r) => r != '/auth/sesion',
+            avisaExpiracion: (r, _) => r != '/auth/sesion',
           ),
           const ErrorInterceptor(),
         ],

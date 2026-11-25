@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'app.dart';
@@ -9,7 +10,7 @@ import 'core/config/app_config.dart';
 import 'core/security/session_manager.dart';
 import 'injection.dart';
 
-void main() {
+Future<void> main() async {
   // En web usa URLs limpias (/historial en lugar de /#/historial). El servidor debe
   // responder index.html en cualquier ruta de la app. En movil no hace nada.
   usePathUrlStrategy();
@@ -22,6 +23,7 @@ void main() {
     return;
   }
 
+  await initializeDateFormatting('es_MX');
   configurarDependencias();
   // La app arranca en /cargando y el router decide a donde ir cuando termina.
   unawaited(getIt<SessionManager>().restaurar());

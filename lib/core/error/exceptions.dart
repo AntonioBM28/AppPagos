@@ -61,11 +61,30 @@ final class ConflictException extends AppException {
   ]);
 }
 
+/// 409 del login: el usuario ya tiene una sesion abierta en otro dispositivo.
+final class SesionActivaException extends AppException {
+  const SesionActivaException({
+    required String message,
+    required this.plataforma,
+    this.iniciadaEn,
+  }) : super(message);
+
+  /// WEB o MOVIL.
+  final String plataforma;
+  final DateTime? iniciadaEn;
+}
+
 /// 422: regla de negocio (saldo insuficiente, compra rechazada...).
 final class BusinessRuleException extends AppException {
   const BusinessRuleException([
     super.message = 'La operación no cumple las reglas del sistema',
   ]);
+}
+
+/// 410: el recurso ya no esta disponible (por ejemplo, un codigo de verificacion ya
+/// usado o un desafio que ya no existe). No tiene caso reintentar.
+final class GoneException extends AppException {
+  const GoneException([super.message = 'Esta operación ya no está disponible']);
 }
 
 /// 413: el cuerpo de la peticion es demasiado grande.

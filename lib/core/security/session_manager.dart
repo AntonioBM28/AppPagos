@@ -37,13 +37,21 @@ class SessionManager extends ChangeNotifier {
   final DateTime Function() _reloj;
   final _cambios = StreamController<SessionStatus>.broadcast();
 
+  static const mensajeExpiracion = 'Tu sesión expiró o fue cerrada. Inicia sesión de nuevo';
+
   SessionStatus _status = SessionStatus.verificando;
   MotivoCierre _motivoCierre = MotivoCierre.ninguno;
+  String? _mensajeCierre;
   SessionData? _datos;
   Timer? _temporizador;
 
   SessionStatus get status => _status;
   MotivoCierre get motivoCierre => _motivoCierre;
+
+  /// Explicacion para el usuario cuando [motivoCierre] es expirada (por ejemplo, el
+  /// servidor indica que se inicio sesion en otro dispositivo).
+  String? get mensajeCierre =>
+      _motivoCierre == MotivoCierre.expirada ? (_mensajeCierre ?? mensajeExpiracion) : null;
   SessionData? get datos => _datos;
   bool get estaAutenticada => _status == SessionStatus.autenticada;
   Stream<SessionStatus> get cambios => _cambios.stream;
@@ -81,19 +89,24 @@ class SessionManager extends ChangeNotifier {
   /// Cierre voluntario de sesion.
   Future<void> cerrar() => _cerrar(MotivoCierre.ninguno);
 
-  /// La sesion expiro o el servidor respondio 401 (por ejemplo, se cerro desde otro dispositivo).
-  void notificarSesionExpirada() {
+  /// La sesion expiro o el servidor respondio 401 (por ejemplo, se cerro desde otro
+  /// dispositivo). [mensaje] es la explicacion del servidor, si la hay.
+  void notificarSesionExpirada([String? mensaje]) {
     if (_status == SessionStatus.noAutenticada) return;
-    unawaited(_cerrar(MotivoCierre.expirada));
+    unawaited(_cerrar(MotivoCierre.expirada, mensaje));
   }
 
   /// La pantalla de login llama esto despues de mostrar el aviso.
-  void limpiarMotivoCierre() => _motivoCierre = MotivoCierre.ninguno;
+  void limpiarMotivoCierre() {
+    _motivoCierre = MotivoCierre.ninguno;
+    _mensajeCierre = null;
+  }
 
-  Future<void> _cerrar(MotivoCierre motivo) async {
+  Future<void> _cerrar(MotivoCierre motivo, [String? mensaje]) async {
     _temporizador?.cancel();
     _datos = null;
     _motivoCierre = motivo;
+    _mensajeCierre = mensaje;
     await _store.borrar();
     _emitir(SessionStatus.noAutenticada);
   }
@@ -102,7 +115,7 @@ class SessionManager extends ChangeNotifier {
     _datos = datos;
     _temporizador?.cancel();
     final restante = datos.expiracion.difference(_reloj());
-    _temporizador = Timer(restante, notificarSesionExpirada);
+    _temporizador = Timer(restante, () => notificarSesionExpirada());
     _emitir(SessionStatus.autenticada);
   }
 

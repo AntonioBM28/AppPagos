@@ -19,8 +19,11 @@ sealed class Failure extends Equatable {
         NotFoundException(:final message) => NotFoundFailure(message),
         ValidationException(:final message) => ValidationFailure(message),
         ConflictException(:final message) => ConflictFailure(message),
+        SesionActivaException(:final message, :final plataforma, :final iniciadaEn) =>
+          SesionActivaFailure(message, plataforma: plataforma, iniciadaEn: iniciadaEn),
         BusinessRuleException(:final message) => BusinessRuleFailure(message),
         PayloadTooLargeException(:final message) => ValidationFailure(message),
+        GoneException(:final message) => GoneFailure(message),
         TooManyRequestsException(:final message, :final retryAfterSeconds) =>
           TooManyRequestsFailure(message, retryAfterSeconds: retryAfterSeconds),
         ServerException(:final message) => ServerFailure(message),
@@ -68,6 +71,24 @@ final class ConflictFailure extends Failure {
   const ConflictFailure([
     super.message = 'La operación entra en conflicto con información existente',
   ]);
+}
+
+/// El usuario tiene una sesion abierta en otro dispositivo; la app pregunta si se cierra.
+final class SesionActivaFailure extends Failure {
+  const SesionActivaFailure(super.message, {required this.plataforma, this.iniciadaEn});
+
+  final String plataforma;
+  final DateTime? iniciadaEn;
+
+  bool get esMovil => plataforma == 'MOVIL';
+
+  @override
+  List<Object?> get props => [message, plataforma, iniciadaEn];
+}
+
+/// La operacion ya no esta disponible y no tiene caso reintentarla.
+final class GoneFailure extends Failure {
+  const GoneFailure([super.message = 'Esta operación ya no está disponible']);
 }
 
 final class BusinessRuleFailure extends Failure {

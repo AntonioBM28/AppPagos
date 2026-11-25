@@ -16,6 +16,17 @@ import 'core/security/session_data.dart';
 import 'core/security/session_manager.dart';
 import 'core/security/session_store.dart';
 import 'core/security/web_session_store.dart';
+import 'features/auth/data/datasources/auth_remote_data_source.dart';
+import 'features/auth/data/repositories/auth_repository_impl.dart';
+import 'features/auth/domain/entities/desafio_verificacion.dart';
+import 'features/auth/domain/repositories/auth_repository.dart';
+import 'features/auth/domain/usecases/auth_usecases.dart';
+import 'features/auth/presentation/cubit/login_cubit.dart';
+import 'features/auth/presentation/cubit/verificacion_cubit.dart';
+import 'features/clientes/data/repositories/clientes_repository_impl.dart';
+import 'features/clientes/domain/repositories/clientes_repository.dart';
+import 'features/clientes/domain/usecases/clientes_usecases.dart';
+import 'features/clientes/presentation/cubit/clientes_cubits.dart';
 
 /// Contenedor de dependencias. Solo se usa para armar los objetos al arrancar; las
 /// pantallas reciben lo que necesitan por constructor o por BlocProvider.
@@ -52,8 +63,53 @@ void configurarDependencias({bool isWeb = kIsWeb}) {
       ),
     )
     ..registerLazySingleton<ApiClient>(() => ApiClient(getIt<Dio>()))
+    // ------------------------------------------------------------ Autenticacion
+    ..registerLazySingleton<AuthRemoteDataSource>(
+      () => AuthRemoteDataSource(
+        api: getIt<ApiClient>(),
+        dispositivo: getIt<DeviceIdProvider>(),
+        isWeb: isWeb,
+      ),
+    )
+    ..registerLazySingleton<AuthRepository>(
+      () => AuthRepositoryImpl(remoto: getIt<AuthRemoteDataSource>(), sesion: getIt<SessionManager>()),
+    )
+    ..registerFactory(() => LoginCubit(IniciarSesion(getIt<AuthRepository>())))
+    ..registerFactory(() => CerrarSesionCubit(CerrarSesion(getIt<AuthRepository>())))
+    ..registerFactoryParam<VerificacionCubit, DesafioVerificacion, void>(
+      (desafio, _) => VerificacionCubit(
+        desafio: desafio,
+        verificarCodigo: VerificarCodigo(getIt<AuthRepository>()),
+        reenviarCodigo: ReenviarCodigo(getIt<AuthRepository>()),
+      ),
+    )
+    // ------------------------------------------------------------ Clientes
+    ..registerLazySingleton<ClientesRepository>(() => ClientesRepositoryImpl(getIt<ApiClient>()))
+    ..registerFactory(() => RegistroClienteCubit(RegistrarCliente(getIt<ClientesRepository>())))
+    ..registerFactory(() => ClientesCubit(ConsultarClientes(getIt<ClientesRepository>())))
+    ..registerFactory(() => EditarClienteCubit(ActualizarCliente(getIt<ClientesRepository>())))
+    ..registerFactoryParam<ClienteDetalleCubit, int, void>(
+      (id, _) => ClienteDetalleCubit(
+        id: id,
+        obtener: ObtenerCliente(getIt<ClientesRepository>()),
+        cambiarEstatus: CambiarEstatusCliente(getIt<ClientesRepository>()),
+      ),
+    )
+    // ------------------------------------------------------------ Navegacion
     ..registerLazySingleton<GoRouter>(
-      () => crearRouter(getIt<SessionManager>()),
+      () => crearRouter(
+        getIt<SessionManager>(),
+        FabricasCubits(
+          login: () => getIt<LoginCubit>(),
+          verificacion: (desafio) => getIt<VerificacionCubit>(param1: desafio),
+          cerrarSesion: () => getIt<CerrarSesionCubit>(),
+          registroCliente: () => getIt<RegistroClienteCubit>(),
+          clientes: () => getIt<ClientesCubit>(),
+          clienteDetalle: (id) => getIt<ClienteDetalleCubit>(param1: id),
+          editarCliente: () => getIt<EditarClienteCubit>(),
+          consultarCodigoPostal: ConsultarCodigoPostal(getIt<ClientesRepository>()).call,
+        ),
+      ),
     );
 }
 
