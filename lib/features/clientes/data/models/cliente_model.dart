@@ -60,6 +60,18 @@ abstract final class ClienteModel {
     }
   }
 
+  static AbonoSaldo abono(Map<String, dynamic> json) {
+    try {
+      return AbonoSaldo(
+        numeroCuenta: json['numeroCuenta'] as String,
+        monto: (json['monto'] as num).toDouble(),
+        saldo: (json['saldo'] as num).toDouble(),
+      );
+    } on Object {
+      throw const InvalidResponseException();
+    }
+  }
+
   static CuentaResumen cuenta(Map<String, dynamic> json) => CuentaResumen(
         numeroCuenta: json['numeroCuenta'] as String,
         estatus: json['estatus'] as String,

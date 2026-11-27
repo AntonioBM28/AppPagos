@@ -8,10 +8,19 @@ import 'package:pagosapp/core/security/web_session_store.dart';
 import 'package:pagosapp/features/auth/domain/usecases/auth_usecases.dart';
 import 'package:pagosapp/features/auth/presentation/cubit/login_cubit.dart';
 import 'package:pagosapp/features/auth/presentation/cubit/verificacion_cubit.dart';
+import 'package:pagosapp/features/catalogo/domain/catalogo_repository.dart';
+import 'package:pagosapp/features/catalogo/presentation/cubit/catalogo_cubit.dart';
 import 'package:pagosapp/features/clientes/domain/usecases/clientes_usecases.dart';
+import 'package:pagosapp/features/compras/presentation/compra_cubit.dart';
+import 'package:pagosapp/features/compras/presentation/pages/nip_page.dart';
+import 'package:pagosapp/features/historial/domain/operacion.dart';
+import 'package:pagosapp/features/historial/presentation/historial_cubit.dart';
 import 'package:pagosapp/features/clientes/presentation/cubit/clientes_cubits.dart';
 
 import 'fake_auth_repository.dart';
+import 'fake_catalogo_repository.dart';
+import 'fake_compras_repository.dart';
+import 'fake_historial_repository.dart';
 import 'fake_clientes_repository.dart';
 
 /// Sesiones de ejemplo.
@@ -29,7 +38,14 @@ SessionData sesionCliente() => SessionData(
     );
 
 /// Todos los Cubits de la app con repositorios en memoria.
-FabricasCubits fabricasDePrueba(FakeAuthRepository auth, FakeClientesRepository clientes) => FabricasCubits(
+FabricasCubits fabricasDePrueba(
+  FakeAuthRepository auth,
+  FakeClientesRepository clientes, [
+  FakeCatalogoRepository? catalogo,
+  FakeHistorialRepository? historial,
+  FakeComprasRepository? compras,
+]) =>
+    FabricasCubits(
       login: () => LoginCubit(IniciarSesion(auth)),
       verificacion: (desafio) => VerificacionCubit(
         desafio: desafio,
@@ -44,9 +60,19 @@ FabricasCubits fabricasDePrueba(FakeAuthRepository auth, FakeClientesRepository 
         id: id,
         obtener: ObtenerCliente(clientes),
         cambiarEstatus: CambiarEstatusCliente(clientes),
+        abonarSaldo: AbonarSaldo(clientes),
       ),
       editarCliente: () => EditarClienteCubit(ActualizarCliente(clientes)),
       consultarCodigoPostal: clientes.consultarCodigoPostal,
+      catalogo: () => CatalogoCubit(ConsultarCatalogo(catalogo ?? FakeCatalogoRepository())),
+      historial: () => HistorialCubit(
+        ConsultarHistorial(historial ?? FakeHistorialRepository(comoCliente: !(auth.sesion?.datos?.esEjecutivo ?? false))),
+      ),
+      compra: () => CompraCubit(
+        repositorio: compras ?? FakeComprasRepository(),
+        misCuentas: () => clientes.detalle(7),
+      ),
+      nip: () => NipCubit(compras ?? FakeComprasRepository()),
     );
 
 /// Levanta la app completa con una sesion dada (o sin sesion) en el tamano indicado.
@@ -54,6 +80,7 @@ Future<({SessionManager sesion, FakeAuthRepository auth, FakeClientesRepository 
   WidgetTester tester, {
   SessionData? sesionRemota,
   Size tamano = const Size(390, 844),
+  FakeComprasRepository? compras,
 }) async {
   tester.view
     ..devicePixelRatio = 1
@@ -66,7 +93,9 @@ Future<({SessionManager sesion, FakeAuthRepository auth, FakeClientesRepository 
   );
   final auth = FakeAuthRepository(sesion: sesion);
   final clientes = FakeClientesRepository();
-  await tester.pumpWidget(PagosApp(router: crearRouter(sesion, fabricasDePrueba(auth, clientes))));
+  await tester.pumpWidget(
+    PagosApp(router: crearRouter(sesion, fabricasDePrueba(auth, clientes, null, null, compras))),
+  );
   await sesion.restaurar();
   await tester.pumpAndSettle();
   return (sesion: sesion, auth: auth, clientes: clientes);

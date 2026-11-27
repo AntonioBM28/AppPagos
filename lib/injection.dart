@@ -23,7 +23,17 @@ import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/domain/usecases/auth_usecases.dart';
 import 'features/auth/presentation/cubit/login_cubit.dart';
 import 'features/auth/presentation/cubit/verificacion_cubit.dart';
+import 'features/catalogo/data/catalogo_repository_impl.dart';
+import 'features/catalogo/domain/catalogo_repository.dart';
+import 'features/catalogo/presentation/cubit/catalogo_cubit.dart';
 import 'features/clientes/data/repositories/clientes_repository_impl.dart';
+import 'features/compras/data/compras_repository_impl.dart';
+import 'features/compras/domain/compra.dart';
+import 'features/compras/presentation/compra_cubit.dart';
+import 'features/compras/presentation/pages/nip_page.dart';
+import 'features/historial/data/historial_repository_impl.dart';
+import 'features/historial/domain/operacion.dart';
+import 'features/historial/presentation/historial_cubit.dart';
 import 'features/clientes/domain/repositories/clientes_repository.dart';
 import 'features/clientes/domain/usecases/clientes_usecases.dart';
 import 'features/clientes/presentation/cubit/clientes_cubits.dart';
@@ -85,6 +95,18 @@ void configurarDependencias({bool isWeb = kIsWeb}) {
     )
     // ------------------------------------------------------------ Clientes
     ..registerLazySingleton<ClientesRepository>(() => ClientesRepositoryImpl(getIt<ApiClient>()))
+    ..registerLazySingleton<CatalogoRepository>(() => CatalogoRepositoryImpl(getIt<ApiClient>()))
+    ..registerFactory(() => CatalogoCubit(ConsultarCatalogo(getIt<CatalogoRepository>())))
+    ..registerLazySingleton<HistorialRepository>(() => HistorialRepositoryImpl(getIt<ApiClient>()))
+    ..registerFactory(() => HistorialCubit(ConsultarHistorial(getIt<HistorialRepository>())))
+    ..registerLazySingleton<ComprasRepository>(() => ComprasRepositoryImpl(getIt<ApiClient>()))
+    ..registerFactory(() => NipCubit(getIt<ComprasRepository>()))
+    ..registerFactory(
+      () => CompraCubit(
+        repositorio: getIt<ComprasRepository>(),
+        misCuentas: () => getIt<ClientesRepository>().detalle(getIt<SessionManager>().datos?.clienteId ?? 0),
+      ),
+    )
     ..registerFactory(() => RegistroClienteCubit(RegistrarCliente(getIt<ClientesRepository>())))
     ..registerFactory(() => ClientesCubit(ConsultarClientes(getIt<ClientesRepository>())))
     ..registerFactory(() => EditarClienteCubit(ActualizarCliente(getIt<ClientesRepository>())))
@@ -93,6 +115,7 @@ void configurarDependencias({bool isWeb = kIsWeb}) {
         id: id,
         obtener: ObtenerCliente(getIt<ClientesRepository>()),
         cambiarEstatus: CambiarEstatusCliente(getIt<ClientesRepository>()),
+        abonarSaldo: AbonarSaldo(getIt<ClientesRepository>()),
       ),
     )
     // ------------------------------------------------------------ Navegacion
@@ -108,6 +131,10 @@ void configurarDependencias({bool isWeb = kIsWeb}) {
           clienteDetalle: (id) => getIt<ClienteDetalleCubit>(param1: id),
           editarCliente: () => getIt<EditarClienteCubit>(),
           consultarCodigoPostal: ConsultarCodigoPostal(getIt<ClientesRepository>()).call,
+          catalogo: () => getIt<CatalogoCubit>(),
+          historial: () => getIt<HistorialCubit>(),
+          compra: () => getIt<CompraCubit>(),
+          nip: () => getIt<NipCubit>(),
         ),
       ),
     );

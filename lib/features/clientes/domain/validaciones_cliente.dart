@@ -140,6 +140,23 @@ abstract final class ValidacionesCliente {
     return null;
   }
 
+  // ------------------------------------------------------------------ Saldo
+
+  /// Limites de un abono de saldo (los mismos que valida el servidor).
+  static const double montoMinimoAbono = 1;
+  static const double montoMaximoAbono = 50000;
+  static final RegExp _importe = RegExp(r'^\d{1,8}(\.\d{1,2})?$');
+
+  static String? montoAbono(String? valor) {
+    final texto = _limpiar(valor).replaceAll(',', '');
+    if (texto.isEmpty) return 'Escribe el monto a abonar';
+    if (!_importe.hasMatch(texto)) return 'Escribe un monto válido, con máximo 2 decimales';
+    final monto = double.parse(texto);
+    if (monto < montoMinimoAbono) return r'El monto mínimo es de $1.00';
+    if (monto > montoMaximoAbono) return r'El monto máximo por abono es de $50,000.00';
+    return null;
+  }
+
   static String? codigoPostal(String? valor) {
     final texto = _limpiar(valor);
     if (texto.isEmpty) return 'El código postal es obligatorio';

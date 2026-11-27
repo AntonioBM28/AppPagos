@@ -77,7 +77,10 @@ class FakeClientesRepository implements ClientesRepository {
 
   @override
   Future<Result<ClienteDetalle>> detalle(int id) async =>
-      Success(ClienteDetalle(cliente: cliente, cuentas: const [CuentaResumen(numeroCuenta: '1000000009', estatus: 'ACTIVA', saldo: 0)]));
+      Success(ClienteDetalle(
+        cliente: cliente,
+        cuentas: [CuentaResumen(numeroCuenta: '1000000009', estatus: cliente.activo ? 'ACTIVA' : 'INACTIVA', saldo: saldo)],
+      ));
 
   @override
   Future<Result<ClienteDetalle>> actualizar(Cliente original, DatosCliente nuevos) async {
@@ -92,6 +95,16 @@ class FakeClientesRepository implements ClientesRepository {
     patches.add({'id': id, 'activo': activo});
     cliente = clienteDePrueba(id: id, activo: activo);
     return detalle(id);
+  }
+
+  final List<({String numeroCuenta, double monto, String? concepto})> abonos = [];
+  double saldo = 0;
+
+  @override
+  Future<Result<AbonoSaldo>> abonarSaldo(String numeroCuenta, {required double monto, String? concepto}) async {
+    abonos.add((numeroCuenta: numeroCuenta, monto: monto, concepto: concepto));
+    saldo += monto;
+    return Success(AbonoSaldo(numeroCuenta: numeroCuenta, monto: monto, saldo: saldo));
   }
 
   @override

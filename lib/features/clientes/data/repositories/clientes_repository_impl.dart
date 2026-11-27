@@ -62,6 +62,21 @@ class ClientesRepositoryImpl implements ClientesRepository {
     return resultado;
   }
 
+  @override
+  Future<Result<AbonoSaldo>> abonarSaldo(String numeroCuenta, {required double monto, String? concepto}) =>
+      _ejecutar(
+        () async => ClienteModel.abono(
+          (await _api.post(
+            ApiEndpoints.cuentasAbonos,
+            body: {
+              'numeroCuenta': numeroCuenta,
+              'monto': monto,
+              if (concepto != null && concepto.trim().isNotEmpty) 'concepto': concepto.trim(),
+            },
+          )).data,
+        ),
+      );
+
   Future<Result<ClienteDetalle>> _patch(Map<String, dynamic> cuerpo) => _ejecutar(
         () async => ClienteModel.detalle((await _api.patch(ApiEndpoints.clientes, body: cuerpo)).data),
       );

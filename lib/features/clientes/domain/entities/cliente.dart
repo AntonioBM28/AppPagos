@@ -193,6 +193,20 @@ class CuentaResumen extends Equatable {
   List<Object?> get props => [numeroCuenta, estatus, saldo];
 }
 
+/// Resultado de abonar saldo a una cuenta.
+class AbonoSaldo extends Equatable {
+  const AbonoSaldo({required this.numeroCuenta, required this.monto, required this.saldo});
+
+  final String numeroCuenta;
+  final double monto;
+
+  /// Saldo de la cuenta despues del abono.
+  final double saldo;
+
+  @override
+  List<Object?> get props => [numeroCuenta, monto, saldo];
+}
+
 class ClienteDetalle extends Equatable {
   const ClienteDetalle({required this.cliente, required this.cuentas});
 

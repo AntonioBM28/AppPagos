@@ -43,6 +43,14 @@ class CambiarEstatusCliente {
       _repositorio.cambiarEstatus(id, activo: activo);
 }
 
+class AbonarSaldo {
+  const AbonarSaldo(this._repositorio);
+  final ClientesRepository _repositorio;
+
+  Future<Result<AbonoSaldo>> call(String numeroCuenta, {required double monto, String? concepto}) =>
+      _repositorio.abonarSaldo(numeroCuenta, monto: monto, concepto: concepto);
+}
+
 class ConsultarCodigoPostal {
   const ConsultarCodigoPostal(this._repositorio);
   final ClientesRepository _repositorio;
