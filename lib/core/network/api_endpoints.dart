@@ -32,6 +32,24 @@ abstract final class ApiEndpoints {
   /// POST: estado, municipio y colonias de un codigo postal (publica).
   static const String codigosPostales = '/codigos-postales/consulta';
 
+  /// POST: consulta del catalogo de productos con filtros (solo lectura).
+  static const String productosConsulta = '/productos/consulta';
+
+  /// POST: historial de operaciones (ejecutivo: de todos los clientes; cliente: las suyas).
+  static const String historial = '/transacciones/historial';
+
+  /// GET estado / POST alta / PATCH cambio del NIP de transacciones (solo CLIENTE).
+  static const String nip = '/nip';
+
+  /// POST: confirma una compra con el NIP y devuelve el token dinamico.
+  static const String autorizacionCompra = '/transacciones/autorizacion';
+
+  /// POST: ejecuta la compra con el token dinamico (header Idempotency-Key).
+  static const String transacciones = '/transacciones';
+
+  /// POST: abono de saldo a una cuenta (solo EJECUTIVO).
+  static const String cuentasAbonos = '/cuentas/abonos';
+
   /// Peticiones que no requieren sesion, como "METODO ruta": no llevan Authorization y
   /// un 401 en ellas no significa que la sesion expiro. Se incluye el metodo porque
   /// /clientes es publico para registrarse (POST) pero protegido para actualizar (PATCH).

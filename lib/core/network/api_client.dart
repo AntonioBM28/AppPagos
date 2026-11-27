@@ -25,11 +25,14 @@ class ApiClient {
   Future<ApiResponse> get(String path, {CancelToken? cancelToken}) =>
       _enviar(() => _dio.get<Object?>(path, cancelToken: cancelToken));
 
+  /// [aceptarRechazo]: una operacion rechazada (codigo distinto de 0 con HTTP 2xx) se devuelve
+  /// como respuesta en lugar de lanzar error, para mostrar su ticket.
   Future<ApiResponse> post(
     String path, {
     Map<String, dynamic>? body,
     Map<String, String>? headers,
     CancelToken? cancelToken,
+    bool aceptarRechazo = false,
   }) =>
       _enviar(
         () => _dio.post<Object?>(
@@ -38,6 +41,7 @@ class ApiClient {
           options: Options(headers: headers),
           cancelToken: cancelToken,
         ),
+        aceptarRechazo: aceptarRechazo,
       );
 
   Future<ApiResponse> patch(
@@ -49,12 +53,12 @@ class ApiClient {
         () => _dio.patch<Object?>(path, data: body, cancelToken: cancelToken),
       );
 
-  Future<ApiResponse> _enviar(Future<Response<Object?>> Function() peticion) async {
+  Future<ApiResponse> _enviar(Future<Response<Object?>> Function() peticion, {bool aceptarRechazo = false}) async {
     try {
       final response = await peticion();
       return ApiResponse(
         statusCode: response.statusCode ?? 0,
-        data: validarSobre(response.data),
+        data: validarSobre(response.data, aceptarRechazo: aceptarRechazo),
       );
     } on DioException catch (e) {
       throw ErrorInterceptor.mapDioException(e);
@@ -62,11 +66,11 @@ class ApiClient {
   }
 
   /// Toda respuesta exitosa debe traer el sobre { "codigo": 0, "mensaje": ... }.
-  static Map<String, dynamic> validarSobre(Object? body) {
+  static Map<String, dynamic> validarSobre(Object? body, {bool aceptarRechazo = false}) {
     if (body is! Map<String, dynamic> || body['codigo'] is! int) {
       throw const InvalidResponseException();
     }
-    if (body['codigo'] != 0) {
+    if (body['codigo'] != 0 && !aceptarRechazo) {
       final mensaje = body['mensaje'];
       throw mensaje is String && mensaje.isNotEmpty
           ? BusinessRuleException(mensaje)

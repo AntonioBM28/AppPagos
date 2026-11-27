@@ -1,5 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
+
+import '../../../../core/result/result.dart';
 
 import '../../domain/entities/cliente.dart';
 import '../../domain/entities/datos_cliente.dart';
@@ -95,11 +98,19 @@ class ClientesCubit extends Cubit<ClientesState> {
 // =========================================================================== Detalle
 
 class ClienteDetalleState extends Equatable {
-  const ClienteDetalleState({this.detalle, this.cargando = true, this.cambiandoEstatus = false, this.error, this.aviso});
+  const ClienteDetalleState({
+    this.detalle,
+    this.cargando = true,
+    this.cambiandoEstatus = false,
+    this.abonando = false,
+    this.error,
+    this.aviso,
+  });
 
   final ClienteDetalle? detalle;
   final bool cargando;
   final bool cambiandoEstatus;
+  final bool abonando;
   final String? error;
   final String? aviso;
 
@@ -107,6 +118,7 @@ class ClienteDetalleState extends Equatable {
     ClienteDetalle? detalle,
     bool? cargando,
     bool? cambiandoEstatus,
+    bool? abonando,
     String? error,
     String? aviso,
   }) =>
@@ -114,21 +126,51 @@ class ClienteDetalleState extends Equatable {
         detalle: detalle ?? this.detalle,
         cargando: cargando ?? this.cargando,
         cambiandoEstatus: cambiandoEstatus ?? this.cambiandoEstatus,
+        abonando: abonando ?? this.abonando,
         error: error,
         aviso: aviso,
       );
 
   @override
-  List<Object?> get props => [detalle, cargando, cambiandoEstatus, error, aviso];
+  List<Object?> get props => [detalle, cargando, cambiandoEstatus, abonando, error, aviso];
 }
 
 class ClienteDetalleCubit extends Cubit<ClienteDetalleState> {
-  ClienteDetalleCubit({required this.id, required this._obtener, required this._cambiarEstatus})
-      : super(const ClienteDetalleState());
+  ClienteDetalleCubit({
+    required this.id,
+    required this._obtener,
+    required this._cambiarEstatus,
+    required this._abonarSaldo,
+  }) : super(const ClienteDetalleState());
 
   final int id;
   final ObtenerCliente _obtener;
   final CambiarEstatusCliente _cambiarEstatus;
+  final AbonarSaldo _abonarSaldo;
+  static final _moneda = NumberFormat.currency(locale: 'es_MX', symbol: r'$');
+
+  /// Abona saldo a una cuenta del cliente y vuelve a consultar el detalle para mostrar el
+  /// saldo nuevo. Devuelve true si se abono.
+  Future<bool> abonar(String numeroCuenta, {required double monto, String? concepto}) async {
+    if (state.abonando) return false;
+    emit(state.copyWith(abonando: true));
+    final resultado = await _abonarSaldo(numeroCuenta, monto: monto, concepto: concepto);
+    if (isClosed) return false;
+    switch (resultado) {
+      case Success(:final data):
+        final detalle = (await _obtener(id)).dataOrNull;
+        if (isClosed) return true;
+        emit(state.copyWith(
+          detalle: detalle,
+          abonando: false,
+          aviso: 'Se abonaron ${_moneda.format(data.monto)}. Saldo actual: ${_moneda.format(data.saldo)}',
+        ));
+        return true;
+      case ErrorResult(:final failure):
+        emit(state.copyWith(abonando: false, error: failure.message));
+        return false;
+    }
+  }
 
   Future<void> cargar() async {
     emit(state.copyWith(cargando: true));

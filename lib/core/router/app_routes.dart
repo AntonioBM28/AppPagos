@@ -13,6 +13,12 @@ abstract final class AppRoutes {
   static const perfil = '/perfil';
   static const misDatos = '/perfil/datos';
 
+  /// Compra de un producto del catalogo (solo CLIENTE; el producto viaja en `extra`).
+  static const compra = '$catalogo/comprar';
+
+  /// Configurar o cambiar el NIP de transacciones (solo CLIENTE).
+  static const nipTransacciones = '$perfil/nip';
+
   static String clienteDetalle(int id) => '$clientes/$id';
   static String clienteEditar(int id) => '$clientes/$id/editar';
   static const clienteNuevo = '$clientes/nuevo';
@@ -27,6 +33,9 @@ abstract final class AppRoutes {
       path != cargando && !publicas.contains(path);
 
   static bool soloEjecutivo(String path) => path == clientes || path.startsWith('$clientes/');
+
+  /// El ejecutivo no compra ni tiene NIP de transacciones.
+  static bool soloCliente(String path) => path == compra || path == nipTransacciones;
 
   /// Decide la redireccion. Devuelve null si la ruta pedida es valida.
   ///
@@ -51,15 +60,19 @@ abstract final class AppRoutes {
       case SessionStatus.autenticada:
         if (ruta == cargando || publicas.contains(ruta)) {
           final destino = destinoSeguro(uri.queryParameters[paramDesde]);
-          return destino != null && (esEjecutivo || !soloEjecutivo(Uri.parse(destino).path)) ? destino : inicio;
+          final rutaDestino = destino == null ? null : Uri.parse(destino).path;
+          return rutaDestino != null && _permitida(rutaDestino, esEjecutivo) ? destino : inicio;
         }
-        if (soloEjecutivo(ruta) && !esEjecutivo) return inicio;
+        if (!_permitida(ruta, esEjecutivo)) return inicio;
         return null;
       case SessionStatus.noAutenticada:
         if (ruta == cargando || esProtegida(ruta)) return login;
         return null;
     }
   }
+
+  static bool _permitida(String ruta, bool esEjecutivo) =>
+      esEjecutivo ? !soloCliente(ruta) : !soloEjecutivo(ruta);
 
   /// Solo acepta rutas internas y protegidas, para que "desde" no pueda usarse para
   /// redirigir a otro sitio (open redirect) ni de vuelta al login.

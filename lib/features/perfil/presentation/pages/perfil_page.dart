@@ -12,12 +12,15 @@ import '../../../auth/presentation/cubit/verificacion_cubit.dart';
 
 /// Datos de la sesion y cierre de sesion.
 class PerfilPage extends StatelessWidget {
-  const PerfilPage({required this.sesion, this.onMisDatos, super.key});
+  const PerfilPage({required this.sesion, this.onMisDatos, this.onNip, super.key});
 
   final SessionData? sesion;
 
   /// Solo para el CLIENTE: abre sus datos para consultarlos y editarlos.
   final VoidCallback? onMisDatos;
+
+  /// NIP de transacciones (solo CLIENTE).
+  final VoidCallback? onNip;
 
   Future<void> _cerrarSesion(BuildContext context) async {
     final cubit = context.read<CerrarSesionCubit>();
@@ -67,6 +70,16 @@ class PerfilPage extends StatelessWidget {
                 icono: Icons.badge_outlined,
                 expandir: true,
                 onPressed: onMisDatos,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+            if (onNip != null) ...[
+              AppButton(
+                texto: 'NIP de transacciones',
+                icono: Icons.pin_outlined,
+                variante: AppButtonVariante.secundario,
+                expandir: true,
+                onPressed: onNip,
               ),
               const SizedBox(height: AppSpacing.sm),
             ],

@@ -7,13 +7,19 @@ import '../../features/auth/presentation/cubit/login_cubit.dart';
 import '../../features/auth/presentation/cubit/verificacion_cubit.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/verificar_codigo_page.dart';
+import '../../features/catalogo/domain/entities/producto.dart';
+import '../../features/catalogo/presentation/cubit/catalogo_cubit.dart';
 import '../../features/catalogo/presentation/pages/catalogo_page.dart';
 import '../../features/clientes/domain/entities/cliente.dart';
+import '../../features/compras/presentation/compra_cubit.dart';
+import '../../features/compras/presentation/pages/compra_page.dart';
+import '../../features/compras/presentation/pages/nip_page.dart';
 import '../../features/clientes/presentation/cubit/clientes_cubits.dart';
 import '../../features/clientes/presentation/pages/cliente_detalle_page.dart';
 import '../../features/clientes/presentation/pages/clientes_page.dart';
 import '../../features/clientes/presentation/pages/editar_cliente_page.dart';
 import '../../features/clientes/presentation/pages/registro_cliente_page.dart';
+import '../../features/historial/presentation/historial_cubit.dart';
 import '../../features/historial/presentation/pages/historial_page.dart';
 import '../../features/inicio/presentation/pages/inicio_page.dart';
 import '../../features/perfil/presentation/pages/perfil_page.dart';
@@ -35,6 +41,10 @@ class FabricasCubits {
     required this.clienteDetalle,
     required this.editarCliente,
     required this.consultarCodigoPostal,
+    required this.catalogo,
+    required this.historial,
+    required this.compra,
+    required this.nip,
   });
 
   final LoginCubit Function() login;
@@ -45,6 +55,10 @@ class FabricasCubits {
   final ClienteDetalleCubit Function(int id) clienteDetalle;
   final EditarClienteCubit Function() editarCliente;
   final Future<Result<InfoCodigoPostal>> Function(String codigoPostal) consultarCodigoPostal;
+  final CatalogoCubit Function() catalogo;
+  final HistorialCubit Function() historial;
+  final CompraCubit Function() compra;
+  final NipCubit Function() nip;
 }
 
 /// Crea el router. Se vuelve a evaluar el redirect cada vez que cambia la sesion.
@@ -172,8 +186,38 @@ GoRouter crearRouter(SessionManager sesion, FabricasCubits cubits) {
               ),
             ],
           ),
-          _rama(AppRoutes.catalogo, (_, _) => const CatalogoPage()),
-          _rama(AppRoutes.historial, (_, _) => const HistorialPage()),
+          _rama(
+            AppRoutes.catalogo,
+            (context, _) => BlocProvider(
+              create: (_) => cubits.catalogo(),
+              // Solo el CLIENTE compra; el EJECUTIVO consulta el catalogo
+              child: CatalogoPage(
+                onComprar: esEjecutivo() ? null : (producto) => context.push(AppRoutes.compra, extra: producto),
+              ),
+            ),
+            rutas: [
+              GoRoute(
+                path: 'comprar',
+                // El producto viaja en extra; si se recarga la pagina se vuelve al catalogo
+                redirect: (_, state) => state.extra is Producto ? null : AppRoutes.catalogo,
+                builder: (context, state) => BlocProvider(
+                  create: (_) => cubits.compra(),
+                  child: CompraPage(
+                    producto: state.extra! as Producto,
+                    onTerminar: () => context.pop(),
+                    onVerCompras: () => context.go(AppRoutes.historial),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          _rama(
+            AppRoutes.historial,
+            (_, _) => BlocProvider(
+              create: (_) => cubits.historial(),
+              child: HistorialPage(esEjecutivo: esEjecutivo()),
+            ),
+          ),
           _rama(
             AppRoutes.perfil,
             (context, _) => BlocProvider(
@@ -181,9 +225,17 @@ GoRouter crearRouter(SessionManager sesion, FabricasCubits cubits) {
               child: PerfilPage(
                 sesion: sesion.datos,
                 onMisDatos: sesion.datos?.clienteId == null ? null : () => context.go(AppRoutes.misDatos),
+                onNip: esEjecutivo() ? null : () => context.go(AppRoutes.nipTransacciones),
               ),
             ),
             rutas: [
+              GoRoute(
+                path: 'nip',
+                builder: (context, state) => BlocProvider(
+                  create: (_) => cubits.nip(),
+                  child: NipPage(onTerminar: () => context.go(AppRoutes.perfil)),
+                ),
+              ),
               // Datos del propio cliente (el EJECUTIVO no es cliente y no la ve)
               GoRoute(
                 path: 'datos',

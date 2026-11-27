@@ -18,4 +18,7 @@ abstract interface class ClientesRepository {
   Future<Result<ClienteDetalle>> cambiarEstatus(int id, {required bool activo});
 
   Future<Result<InfoCodigoPostal>> consultarCodigoPostal(String codigoPostal);
+
+  /// Abona saldo a una cuenta para que el cliente pueda comprar. Solo EJECUTIVO.
+  Future<Result<AbonoSaldo>> abonarSaldo(String numeroCuenta, {required double monto, String? concepto});
 }

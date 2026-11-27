@@ -14,13 +14,18 @@ class _Destino {
   final bool soloEjecutivo;
 }
 
-const _destinos = [
-  _Destino(0, 'Inicio', Icons.home_outlined, Icons.home),
-  _Destino(1, 'Clientes', Icons.groups_outlined, Icons.groups, soloEjecutivo: true),
-  _Destino(2, 'Catálogo', Icons.storefront_outlined, Icons.storefront),
-  _Destino(3, 'Historial', Icons.receipt_long_outlined, Icons.receipt_long),
-  _Destino(4, 'Perfil', Icons.person_outline, Icons.person),
-];
+/// La rama 3 cambia segun el rol: el EJECUTIVO no compra, ve la bitacora de operaciones
+/// de los clientes; el CLIENTE ve su historial de compras.
+List<_Destino> _destinos({required bool esEjecutivo}) => [
+      const _Destino(0, 'Inicio', Icons.home_outlined, Icons.home),
+      if (esEjecutivo) const _Destino(1, 'Clientes', Icons.groups_outlined, Icons.groups, soloEjecutivo: true),
+      const _Destino(2, 'Catálogo', Icons.storefront_outlined, Icons.storefront),
+      if (esEjecutivo)
+        const _Destino(3, 'Operaciones', Icons.manage_search_outlined, Icons.manage_search)
+      else
+        const _Destino(3, 'Mis compras', Icons.receipt_long_outlined, Icons.receipt_long),
+      const _Destino(4, 'Perfil', Icons.person_outline, Icons.person),
+    ];
 
 /// Estructura comun de las pantallas protegidas: barra inferior en pantallas
 /// compactas y NavigationRail en pantallas anchas. La seccion Clientes solo aparece
@@ -31,7 +36,7 @@ class AppShell extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
   final bool esEjecutivo;
 
-  List<_Destino> get _visibles => [for (final d in _destinos) if (!d.soloEjecutivo || esEjecutivo) d];
+  List<_Destino> get _visibles => _destinos(esEjecutivo: esEjecutivo);
 
   void _irA(int posicion) {
     final rama = _visibles[posicion].rama;

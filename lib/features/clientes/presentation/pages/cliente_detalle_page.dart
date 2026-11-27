@@ -9,7 +9,9 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_feedback.dart';
 import '../../../../core/widgets/responsive_layout.dart';
 import '../../../../core/widgets/state_views.dart';
+import '../../../../core/utils/formateadores.dart';
 import '../../domain/entities/cliente.dart';
+import '../../domain/validaciones_cliente.dart';
 import '../cubit/clientes_cubits.dart';
 
 /// Detalle de un cliente. El EJECUTIVO puede editarlo y darlo de baja o reactivarlo;
@@ -64,6 +66,17 @@ class _ClienteDetallePageState extends State<ClienteDetallePage> {
     if (confirmado) await cubit.cambiarEstatus(activo: !darDeBaja);
   }
 
+  Future<void> _abonar(List<CuentaResumen> cuentas) async {
+    final cubit = context.read<ClienteDetalleCubit>();
+    final abono = await showDialog<_Abono>(
+      context: context,
+      builder: (_) => _DialogoAbono(cuentas: cuentas),
+    );
+    if (abono != null) {
+      await cubit.abonar(abono.numeroCuenta, monto: abono.monto, concepto: abono.concepto);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<ClienteDetalleCubit, ClienteDetalleState>(
@@ -93,15 +106,17 @@ class _ClienteDetallePageState extends State<ClienteDetallePage> {
                 mensaje: error ?? 'No fue posible cargar los datos',
                 onReintentar: context.read<ClienteDetalleCubit>().cargar,
               ),
-            _ => _contenido(detalle!, estado.cambiandoEstatus),
+            _ => _contenido(detalle!, estado),
           },
         );
       },
     );
   }
 
-  Widget _contenido(ClienteDetalle detalle, bool cambiandoEstatus) {
+  Widget _contenido(ClienteDetalle detalle, ClienteDetalleState estado) {
     final c = detalle.cliente;
+    final cambiandoEstatus = estado.cambiandoEstatus;
+    final cuentasActivas = [for (final cuenta in detalle.cuentas) if (cuenta.activa) cuenta];
     final texto = Theme.of(context).textTheme;
     return ContenidoCentrado(
       child: Column(
@@ -143,6 +158,15 @@ class _ClienteDetallePageState extends State<ClienteDetallePage> {
               cuenta.numeroCuenta: '${_moneda.format(cuenta.saldo)} · ${cuenta.activa ? 'Activa' : 'Inactiva'}',
             if (detalle.cuentas.isEmpty) 'Sin cuentas': '',
           }),
+          // El saldo con el que el cliente compra solo lo asigna el ejecutivo
+          if (widget.puedeCambiarEstatus && c.activo && cuentasActivas.isNotEmpty)
+            AppButton(
+              texto: 'Abonar saldo',
+              icono: Icons.add_card_outlined,
+              expandir: true,
+              cargando: estado.abonando,
+              onPressed: () => unawaited(_abonar(cuentasActivas)),
+            ),
           const SizedBox(height: AppSpacing.md),
           AppButton(
             texto: 'Editar datos',
@@ -202,6 +226,103 @@ class _Grupo extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+typedef _Abono = ({String numeroCuenta, double monto, String? concepto});
+
+/// Captura del abono: cuenta (si tiene varias activas), monto y concepto opcional.
+class _DialogoAbono extends StatefulWidget {
+  const _DialogoAbono({required this.cuentas});
+
+  final List<CuentaResumen> cuentas;
+
+  @override
+  State<_DialogoAbono> createState() => _DialogoAbonoState();
+}
+
+class _DialogoAbonoState extends State<_DialogoAbono> {
+  static final _moneda = NumberFormat.currency(locale: 'es_MX', symbol: r'$');
+
+  final _formulario = GlobalKey<FormState>();
+  final _monto = TextEditingController();
+  final _concepto = TextEditingController();
+  late CuentaResumen _cuenta = widget.cuentas.first;
+
+  @override
+  void dispose() {
+    _monto.dispose();
+    _concepto.dispose();
+    super.dispose();
+  }
+
+  void _confirmar() {
+    if (!(_formulario.currentState?.validate() ?? false)) return;
+    final concepto = ValidacionesCliente.limpiar(_concepto.text);
+    Navigator.of(context).pop<_Abono>((
+      numeroCuenta: _cuenta.numeroCuenta,
+      monto: double.parse(ValidacionesCliente.limpiar(_monto.text).replaceAll(',', '')),
+      concepto: concepto.isEmpty ? null : concepto,
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Abonar saldo'),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formulario,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (widget.cuentas.length > 1)
+                DropdownButtonFormField<CuentaResumen>(
+                  initialValue: _cuenta,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Cuenta'),
+                  items: [
+                    for (final c in widget.cuentas)
+                      DropdownMenuItem(value: c, child: Text('${c.numeroCuenta} · ${_moneda.format(c.saldo)}')),
+                  ],
+                  onChanged: (c) => setState(() => _cuenta = c ?? _cuenta),
+                )
+              else
+                Text('Cuenta ${_cuenta.numeroCuenta}\nSaldo actual: ${_moneda.format(_cuenta.saldo)}'),
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: _monto,
+                autofocus: true,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: Formateadores.importe,
+                decoration: const InputDecoration(
+                  labelText: 'Monto',
+                  prefixText: r'$ ',
+                  helperText: r'De $1.00 a $50,000.00 por abono',
+                ),
+                validator: ValidacionesCliente.montoAbono,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: _concepto,
+                inputFormatters: Formateadores.textoSeguro(100),
+                decoration: const InputDecoration(
+                  labelText: 'Concepto (opcional)',
+                  hintText: 'Ej. Depósito en sucursal',
+                ),
+                validator: (v) => ValidacionesCliente.texto(v, campo: 'El concepto', maximo: 100, obligatorio: false),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancelar')),
+        FilledButton(onPressed: _confirmar, child: const Text('Abonar')),
+      ],
     );
   }
 }
